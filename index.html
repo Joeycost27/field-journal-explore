@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Field Journal — Explore</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#16211c; --surface:#1c2b23; --surface2:#22342a; --surface3:#2a3f33;
+  --border:rgba(238,242,234,0.08); --border2:rgba(238,242,234,0.16);
+  --text:#eef2ea; --muted:#8fa397; --muted2:#c1cec5;
+  --amber:#e8a33d; --sage:#7fb3a3; --clay:#c76a4f; --rose:#d98a94;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Karla',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.serif{font-family:'Fraunces',serif}
+button{font-family:'Karla',sans-serif;cursor:pointer;background:none;border:none;color:inherit}
+button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+.app{max-width:640px;margin:0 auto;padding:24px 18px 60px}
+.intro{margin-bottom:16px}
+.intro h1{font-size:1.35rem;margin-bottom:4px}
+.intro p{font-size:.85rem;color:var(--muted)}
+
+.scene-nav{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.scene-nav button{padding:6px 12px;border:1px solid var(--border2);border-radius:50px;font-size:.74rem;color:var(--muted)}
+.scene-nav button.active{border-color:var(--amber);color:var(--text)}
+
+.stage{position:relative;width:100%;border-radius:8px;overflow:hidden;border:1px solid var(--border2);background:#000;line-height:0}
+.stage img{width:100%;display:block}
+
+.touch-marker{position:absolute;width:22px;height:22px;margin-left:-11px;margin-top:-11px;border-radius:50%;background:rgba(232,163,61,0.35);border:2px solid var(--amber);cursor:pointer;transition:transform .15s,background .15s}
+.touch-marker::after{content:'';position:absolute;inset:-8px;border-radius:50%;border:1px solid rgba(232,163,61,0.4);animation:pulse 2s infinite}
+.touch-marker:hover{transform:scale(1.15);background:rgba(232,163,61,0.55)}
+.touch-marker.visited{background:rgba(127,179,163,0.35);border-color:var(--sage)}
+.touch-marker.visited::after{border-color:rgba(127,179,163,0.4)}
+.touch-marker.exit{background:rgba(127,179,163,0.3);border-color:var(--sage);border-style:dashed}
+@keyframes pulse{0%{transform:scale(0.8);opacity:.9}100%{transform:scale(1.6);opacity:0}}
+
+.char-dot{position:absolute;width:14px;height:14px;margin-left:-7px;margin-top:-14px;border-radius:50% 50% 50% 0;background:var(--rose);border:2px solid #fff;transition:left .7s cubic-bezier(.4,0,.2,1),top .7s cubic-bezier(.4,0,.2,1);box-shadow:0 2px 8px rgba(0,0,0,.5);z-index:5;animation:sway 2.4s ease-in-out infinite}
+@keyframes sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+
+.legend{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.legend button{text-align:left;padding:12px 14px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);font-size:.86rem;transition:border-color .15s,background .15s}
+.legend button:hover{border-color:var(--amber);background:var(--surface2)}
+.legend button.visited{opacity:.6}
+.legend button.exit{border-style:dashed}
+.legend button .tick{color:var(--sage);margin-right:6px}
+
+.placeholder{padding:60px 20px;text-align:center;color:var(--muted);border:1px dashed var(--border2);border-radius:8px;font-size:.85rem}
+
+.panel-backdrop{position:fixed;inset:0;background:rgba(10,15,12,.6);display:none;align-items:flex-end;justify-content:center;z-index:20;backdrop-filter:blur(2px)}
+.panel-backdrop.show{display:flex}
+.panel{width:100%;max-width:640px;background:var(--surface);border:1px solid var(--border2);border-bottom:none;border-radius:14px 14px 0 0;padding:22px 20px 26px;transform-origin:top center;transform:perspective(800px) rotateX(-90deg);opacity:0;transition:transform .4s cubic-bezier(.3,1.4,.5,1),opacity .3s}
+.panel.open{transform:perspective(800px) rotateX(0deg);opacity:1}
+.panel-title{font-family:'Fraunces',serif;font-size:1.2rem;margin-bottom:10px}
+.panel-intro{font-size:.88rem;color:var(--muted2);line-height:1.6;margin-bottom:16px}
+.panel-choices{display:flex;flex-direction:column;gap:8px}
+.choice-btn{text-align:left;padding:12px 14px;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);font-size:.86rem;line-height:1.4;transition:border-color .15s}
+.choice-btn:hover{border-color:var(--amber)}
+.choice-btn:disabled{opacity:.4;cursor:default}
+.choice-btn.picked{border-color:var(--amber);background:var(--surface3);opacity:1}
+
+.result-box{margin-top:14px}
+.result-row{padding:12px 14px;border-radius:6px;margin-bottom:8px;font-size:.85rem;line-height:1.6}
+.result-pro{background:rgba(127,179,163,.1);border:1px solid rgba(127,179,163,.3)}
+.result-pro .rk{color:var(--sage);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:3px}
+.result-con{background:rgba(232,163,61,.08);border:1px solid rgba(232,163,61,.25)}
+.result-con .rk{color:var(--amber);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:3px}
+.result-tip{background:var(--surface2);border:1px solid var(--border2)}
+.result-tip .rk{color:var(--muted2);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:3px}
+.panel-continue{margin-top:14px;width:100%;padding:12px;background:var(--amber);color:#231605;font-weight:700;border-radius:6px;font-size:.86rem}
+
+.load-msg{padding:60px 20px;text-align:center;color:var(--muted);font-size:.85rem}
+.load-msg code{background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:.8rem}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="intro">
+    <h1 class="serif" id="scene-title">Loading\u2026</h1>
+    <p id="scene-sub"></p>
+  </div>
+
+  <div class="scene-nav" id="scene-nav"></div>
+
+  <div class="stage" id="stage" style="display:none">
+    <img id="scene-img" alt="">
+    <div class="char-dot" id="char" style="display:none"></div>
+  </div>
+  <div id="placeholder-area"></div>
+
+  <div class="legend" id="legend"></div>
+</div>
+
+<div class="panel-backdrop" id="backdrop">
+  <div class="panel" id="panel"></div>
+</div>
+
+<script>
+/* ============================================================
+   THE FIELD JOURNAL — EXPLORE ENGINE
+   Generic, data-driven. This file has NO scene-specific content —
+   everything renders from /data/*.tsv. Add a scene = add a row to
+   locations.tsv (+ an image in /scenes/). Add a touch point = add a
+   row to dilemmas.tsv (or another activity-type table). No code
+   changes needed for ordinary content growth.
+   ============================================================ */
+
+const DATA_FILES = {
+  locations: 'data/locations.tsv',
+  dilemmas: 'data/dilemmas.tsv',
+  exits: 'data/exits.tsv'
+};
+
+let LOCATIONS = [], DILEMMAS = [], EXITS = [];
+let currentSceneId = null;
+let visited = new Set();
+let charPos = { x:45, y:88 };
+
+/* ---------- TSV parsing ---------- */
+function parseTSV(text){
+  const lines = text.replace(/\r/g,'').split('\n').filter(l => l.length > 0);
+  if(lines.length === 0) return [];
+  const headers = lines[0].split('\t');
+  return lines.slice(1).map(line => {
+    const cells = line.split('\t');
+    const row = {};
+    headers.forEach((h,i) => row[h] = cells[i] !== undefined ? cells[i] : '');
+    return row;
+  });
+}
+
+async function loadData(){
+  try{
+    const [locText, dilText, extText] = await Promise.all([
+      fetch(DATA_FILES.locations).then(r => { if(!r.ok) throw new Error('locations fetch failed'); return r.text(); }),
+      fetch(DATA_FILES.dilemmas).then(r => { if(!r.ok) throw new Error('dilemmas fetch failed'); return r.text(); }),
+      fetch(DATA_FILES.exits).then(r => { if(!r.ok) throw new Error('exits fetch failed'); return r.text(); })
+    ]);
+    LOCATIONS = parseTSV(locText);
+    DILEMMAS = parseTSV(dilText);
+    EXITS = parseTSV(extText);
+    boot();
+  }catch(e){
+    showLoadError();
+  }
+}
+
+function showLoadError(){
+  document.getElementById('scene-title').textContent = 'Can\u2019t load scene data';
+  document.getElementById('scene-sub').textContent = '';
+  document.getElementById('placeholder-area').innerHTML = `
+    <div class="load-msg">
+      This page reads its scenes from separate files in <code>/data/</code> and
+      <code>/scenes/</code> — that only works when it\u2019s served over http(s), not
+      opened directly as a local file. Serve it with a local server, or publish it
+      via GitHub Pages, and reload. See README.md for exact steps.
+    </div>`;
+}
+
+function boot(){
+  const ready = LOCATIONS.filter(l => l.status === 'ready');
+  renderSceneNav();
+  if(ready.length === 0){
+    document.getElementById('scene-title').textContent = 'No scenes ready yet';
+    return;
+  }
+  goToScene(ready[0].id);
+}
+
+function renderSceneNav(){
+  const ready = LOCATIONS.filter(l => l.status === 'ready');
+  document.getElementById('scene-nav').innerHTML = ready.map(l =>
+    `<button class="${l.id===currentSceneId?'active':''}" onclick="goToScene('${l.id}')">${l.name}</button>`
+  ).join('');
+}
+
+/* ---------- Scene rendering ---------- */
+function goToScene(sceneId){
+  const loc = LOCATIONS.find(l => l.id === sceneId);
+  currentSceneId = sceneId;
+  renderSceneNav();
+
+  document.getElementById('scene-title').textContent = loc.name;
+  document.getElementById('scene-sub').textContent = loc.intro;
+
+  const stage = document.getElementById('stage');
+  const placeholderArea = document.getElementById('placeholder-area');
+
+  if(loc.status !== 'ready' || !loc.image){
+    stage.style.display = 'none';
+    placeholderArea.innerHTML = `<div class="placeholder">This place is still being built.</div>`;
+    document.getElementById('legend').innerHTML = '';
+    return;
+  }
+
+  placeholderArea.innerHTML = '';
+  stage.style.display = 'block';
+  const img = document.getElementById('scene-img');
+  img.src = loc.image;
+  img.alt = loc.name;
+
+  document.querySelectorAll('.touch-marker').forEach(m => m.remove());
+  const sceneDilemmas = DILEMMAS.filter(d => d.scene === sceneId);
+  const sceneExits = EXITS.filter(e => e.scene === sceneId);
+
+  sceneDilemmas.forEach(d => {
+    const m = document.createElement('div');
+    m.className = 'touch-marker' + (visited.has(d.id) ? ' visited' : '');
+    m.style.left = d.x+'%'; m.style.top = d.y+'%';
+    m.id = 'marker-'+d.id;
+    m.onclick = () => walkTo(d.x, d.y, () => openDilemma(d.id));
+    stage.appendChild(m);
+  });
+  sceneExits.forEach(ex => {
+    const m = document.createElement('div');
+    m.className = 'touch-marker exit';
+    m.style.left = ex.x+'%'; m.style.top = ex.y+'%';
+    m.onclick = () => walkTo(ex.x, ex.y, () => goToScene(ex.target_scene));
+    stage.appendChild(m);
+  });
+
+  const char = document.getElementById('char');
+  char.style.display = 'block';
+  char.style.left = charPos.x+'%';
+  char.style.top = charPos.y+'%';
+
+  renderLegend(sceneDilemmas, sceneExits);
+}
+
+function renderLegend(sceneDilemmas, sceneExits){
+  const legend = document.getElementById('legend');
+  const dilemmaBtns = sceneDilemmas.map(d => {
+    const v = visited.has(d.id);
+    return `<button class="${v?'visited':''}" onclick="walkTo(${d.x},${d.y},()=>openDilemma('${d.id}'))">${v?'<span class="tick">\u2713</span>':''}${d.label}</button>`;
+  });
+  const exitBtns = sceneExits.map(ex =>
+    `<button class="exit" onclick="walkTo(${ex.x},${ex.y},()=>goToScene('${ex.target_scene}'))">${ex.label}</button>`
+  );
+  legend.innerHTML = dilemmaBtns.concat(exitBtns).join('');
+}
+
+/* ---------- Character movement ---------- */
+function walkTo(targetX, targetY, onArrive){
+  const char = document.getElementById('char');
+  charPos = { x: parseFloat(targetX), y: parseFloat(targetY) };
+  char.style.left = charPos.x+'%';
+  char.style.top = charPos.y+'%';
+  click();
+  setTimeout(onArrive, 720);
+}
+
+/* ---------- Sound (synthesised, no files) ---------- */
+function playTone(freq,dur,type,vol){
+  try{
+    const ctx = window._actx || (window._actx = new (window.AudioContext||window.webkitAudioContext)());
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = type||'sine'; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol||0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+(dur||0.15));
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime+(dur||0.15));
+  }catch(e){}
+}
+function chime(){ playTone(660,0.18,'sine',0.12); setTimeout(()=>playTone(880,0.18,'sine',0.1),110); }
+function click(){ playTone(320,0.07,'square',0.06); }
+function closeTone(){ playTone(220,0.12,'sine',0.1); }
+
+/* ---------- Dilemma panel (driven entirely by the row from dilemmas.tsv) ---------- */
+function openDilemma(dilemmaId){
+  const d = DILEMMAS.find(row => row.id === dilemmaId);
+  const panel = document.getElementById('panel');
+  const backdrop = document.getElementById('backdrop');
+  const choices = [1,2,3]
+    .map(n => ({
+      text: d['choice'+n+'_text'], pro: d['choice'+n+'_pro'],
+      con: d['choice'+n+'_con'], tip: d['choice'+n+'_tip']
+    }))
+    .filter(c => c.text);
+
+  panel.innerHTML = `
+    <div class="panel-title serif">${d.title}</div>
+    <div class="panel-intro">${d.intro}</div>
+    <div class="panel-choices" id="panel-choices">
+      ${choices.map((c,i)=>`<button class="choice-btn" onclick="pickChoice('${dilemmaId}',${i})">${c.text}</button>`).join('')}
+    </div>
+    <div class="result-box" id="result-box"></div>
+  `;
+  backdrop.classList.add('show');
+  chime();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>panel.classList.add('open')));
+}
+
+function pickChoice(dilemmaId, i){
+  const d = DILEMMAS.find(row => row.id === dilemmaId);
+  const c = { text: d['choice'+(i+1)+'_text'], pro: d['choice'+(i+1)+'_pro'], con: d['choice'+(i+1)+'_con'], tip: d['choice'+(i+1)+'_tip'] };
+  click();
+  document.querySelectorAll('#panel-choices .choice-btn').forEach((b,idx)=>{
+    b.disabled = true; if(idx===i) b.classList.add('picked');
+  });
+  document.getElementById('result-box').innerHTML = `
+    <div class="result-row result-pro"><span class="rk">Pro</span>${c.pro}</div>
+    <div class="result-row result-con"><span class="rk">Notice</span>${c.con}</div>
+    <div class="result-row result-tip"><span class="rk">If this happens for real</span>${c.tip}</div>
+    <button class="panel-continue" onclick="closePanel('${dilemmaId}')">Continue</button>
+  `;
+}
+
+function closePanel(dilemmaId){
+  visited.add(dilemmaId);
+  closeTone();
+  const panel = document.getElementById('panel');
+  const backdrop = document.getElementById('backdrop');
+  panel.classList.remove('open');
+  setTimeout(()=>{
+    backdrop.classList.remove('show');
+    const marker = document.getElementById('marker-'+dilemmaId);
+    if(marker) marker.classList.add('visited');
+    const loc = LOCATIONS.find(l => l.id === currentSceneId);
+    renderLegend(DILEMMAS.filter(d=>d.scene===currentSceneId), EXITS.filter(e=>e.scene===currentSceneId));
+  }, 350);
+}
+
+loadData();
+</script>
+</body>
+</html>
