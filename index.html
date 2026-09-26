@@ -51,6 +51,24 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 
 .placeholder{padding:60px 20px;text-align:center;color:var(--muted);border:1px dashed var(--border2);border-radius:8px;font-size:.85rem}
 
+.zone-fab{position:fixed;right:18px;bottom:18px;width:56px;height:56px;border-radius:50%;z-index:15;
+  background:conic-gradient(#4a7ba6 0deg 90deg,#6a9c7a 90deg 180deg,#c9a227 180deg 270deg,#b5533c 270deg 360deg);
+  border:2px solid rgba(255,255,255,.25);box-shadow:0 4px 16px rgba(0,0,0,.4);cursor:pointer;transition:transform .15s}
+.zone-fab:hover{transform:scale(1.08)}
+
+.zone-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
+.zone-tile{padding:22px 14px;border-radius:10px;border:2px solid transparent;text-align:center;font-weight:700;font-size:.95rem;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.4);transition:transform .12s,border-color .12s}
+.zone-tile:hover{transform:scale(1.04);border-color:rgba(255,255,255,.5)}
+.zone-tile .zw{display:block;font-weight:400;font-size:.72rem;opacity:.9;margin-top:4px}
+
+.zone-result{border-radius:10px;padding:18px 16px;margin-top:6px}
+.zone-result .zmood{font-size:.74rem;text-transform:uppercase;letter-spacing:.8px;opacity:.85;margin-bottom:8px}
+.zone-result .zstrat{font-size:.92rem;line-height:1.6;margin-bottom:14px}
+.zone-actions{display:flex;gap:8px}
+.zone-actions button{flex:1;padding:10px;border-radius:6px;font-size:.8rem;font-weight:700}
+.zone-actions .again{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)}
+.zone-actions .done{background:rgba(0,0,0,.25);color:#fff;border:1px solid rgba(255,255,255,.2)}
+
 .panel-backdrop{position:fixed;inset:0;background:rgba(10,15,12,.6);display:none;align-items:flex-end;justify-content:center;z-index:20;backdrop-filter:blur(2px)}
 .panel-backdrop.show{display:flex}
 .panel{width:100%;max-width:640px;background:var(--surface);border:1px solid var(--border2);border-bottom:none;border-radius:14px 14px 0 0;padding:22px 20px 26px;transform-origin:top center;transform:perspective(800px) rotateX(-90deg);opacity:0;transition:transform .4s cubic-bezier(.3,1.4,.5,1),opacity .3s}
@@ -99,6 +117,8 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
   <div class="panel" id="panel"></div>
 </div>
 
+<button class="zone-fab" onclick="openZonePicker()" title="How are you feeling?" aria-label="How are you feeling?"></button>
+
 <script>
 /* ============================================================
    THE FIELD JOURNAL — EXPLORE ENGINE
@@ -112,10 +132,11 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 const DATA_FILES = {
   locations: 'data/locations.tsv',
   dilemmas: 'data/dilemmas.tsv',
-  exits: 'data/exits.tsv'
+  exits: 'data/exits.tsv',
+  zones: 'data/zones.tsv'
 };
 
-let LOCATIONS = [], DILEMMAS = [], EXITS = [];
+let LOCATIONS = [], DILEMMAS = [], EXITS = [], ZONES = [];
 let currentSceneId = null;
 let visited = new Set();
 let charPos = { x:45, y:88 };
@@ -135,14 +156,16 @@ function parseTSV(text){
 
 async function loadData(){
   try{
-    const [locText, dilText, extText] = await Promise.all([
+    const [locText, dilText, extText, zonText] = await Promise.all([
       fetch(DATA_FILES.locations).then(r => { if(!r.ok) throw new Error('locations fetch failed'); return r.text(); }),
       fetch(DATA_FILES.dilemmas).then(r => { if(!r.ok) throw new Error('dilemmas fetch failed'); return r.text(); }),
-      fetch(DATA_FILES.exits).then(r => { if(!r.ok) throw new Error('exits fetch failed'); return r.text(); })
+      fetch(DATA_FILES.exits).then(r => { if(!r.ok) throw new Error('exits fetch failed'); return r.text(); }),
+      fetch(DATA_FILES.zones).then(r => { if(!r.ok) throw new Error('zones fetch failed'); return r.text(); })
     ]);
     LOCATIONS = parseTSV(locText);
     DILEMMAS = parseTSV(dilText);
     EXITS = parseTSV(extText);
+    ZONES = parseTSV(zonText);
     boot();
   }catch(e){
     showLoadError();
@@ -274,6 +297,7 @@ function openDilemma(dilemmaId){
   const d = DILEMMAS.find(row => row.id === dilemmaId);
   const panel = document.getElementById('panel');
   const backdrop = document.getElementById('backdrop');
+  panel.style.background = '';
   const choices = [1,2,3]
     .map(n => ({
       text: d['choice'+n+'_text'], pro: d['choice'+n+'_pro'],
@@ -322,6 +346,50 @@ function closePanel(dilemmaId){
     const loc = LOCATIONS.find(l => l.id === currentSceneId);
     renderLegend(DILEMMAS.filter(d=>d.scene===currentSceneId), EXITS.filter(e=>e.scene===currentSceneId));
   }, 350);
+}
+
+/* ---------- Zone check-in — fast, colour-first, always available ---------- */
+function openZonePicker(){
+  const panel = document.getElementById('panel');
+  const backdrop = document.getElementById('backdrop');
+  panel.style.background = 'var(--surface)';
+  panel.innerHTML = `
+    <div class="panel-title serif">How are you feeling?</div>
+    <div class="zone-grid">
+      ${ZONES.map(z => `<button class="zone-tile" style="background:${z.hex}" onclick="pickZone('${z.colour}')">${z.label}<span class="zw">${z.mood_words}</span></button>`).join('')}
+    </div>
+  `;
+  backdrop.classList.add('show');
+  chime();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>panel.classList.add('open')));
+}
+
+function pickZone(colour, strategyIndex){
+  const z = ZONES.find(row => row.colour === colour);
+  const i = strategyIndex || 1;
+  const strategy = z['strategy'+i] || z.strategy1;
+  const panel = document.getElementById('panel');
+  click();
+  panel.style.background = `linear-gradient(180deg, ${z.hex}, var(--surface) 140%)`;
+  panel.innerHTML = `
+    <div class="panel-title serif">${z.label}</div>
+    <div class="zone-result">
+      <div class="zmood">${z.mood_words}</div>
+      <div class="zstrat">${strategy}</div>
+      <div class="zone-actions">
+        <button class="again" onclick="pickZone('${colour}', ${(i%3)+1})">Show another idea</button>
+        <button class="done" onclick="closeZonePicker()">Done</button>
+      </div>
+    </div>
+  `;
+}
+
+function closeZonePicker(){
+  closeTone();
+  const panel = document.getElementById('panel');
+  const backdrop = document.getElementById('backdrop');
+  panel.classList.remove('open');
+  setTimeout(()=>{ backdrop.classList.remove('show'); panel.style.background=''; }, 350);
 }
 
 loadData();
