@@ -1,1 +1,8 @@
 id	scene	x	y	target_scene	label
+ex_garden_hallway	garden	25	55	hallway	Go inside
+ex_hallway_garden	hallway	54	58	garden	Head back outside
+ex_hallway_kitchen	hallway	22	48	kitchen	Into the kitchen
+ex_kitchen_hallway	kitchen	7	80	hallway	Back to the hallway
+ex_hallway_bedroom	hallway	82	48	bedroom	Go upstairs
+ex_bedroom_hallway	bedroom	15	62	hallway	Back downstairs
+ex_kitchen_garden	kitchen	27	42	garden	Out through the archway to the garden

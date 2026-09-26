@@ -1,8 +1,8 @@
 id	level	name	image	status	intro
 garden	home	Garden	scenes/garden.jpg	ready	You're standing in the garden. Where do you go?
 bedroom	home	Bedroom	scenes/bedroom.jpg	ready	The house is quiet. What's on your mind before you sleep?
-hallway	home	Hallway		pending	
-kitchen	home	Kitchen		pending	
+hallway	home	Hallway	scenes/hallway.jpg	ready	You step into the hallway. The kitchen’s through one door, the stairs lead up, and the front door’s right behind you.
+kitchen	home	Kitchen	scenes/kitchen.jpg	ready	The table’s set. Something smells good.
 backpath	home	Back Path		pending	
 street-corner	street	Street Corner		pending	
 bus-stop	street	Bus Stop		pending	
