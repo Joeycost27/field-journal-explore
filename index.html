@@ -185,6 +185,7 @@ function showLoadError(){
 }
 
 function boot(){
+  visited = new Set(LOG.filter(e => e.type === 'dilemma').map(e => e.dilemmaId));
   const ready = LOCATIONS.filter(l => l.status === 'ready');
   renderSceneNav();
   if(ready.length === 0){
@@ -297,7 +298,10 @@ function openDilemma(dilemmaId){
   const d = DILEMMAS.find(row => row.id === dilemmaId);
   const panel = document.getElementById('panel');
   const backdrop = document.getElementById('backdrop');
+  const moodColour = (d.moods||'').split('|')[0];
+  const moodHex = (ZONES.find(z => z.colour === moodColour) || {}).hex || null;
   panel.style.background = '';
+  panel.style.borderTop = moodHex ? `4px solid ${moodHex}` : '';
   const choices = [1,2,3]
     .map(n => ({
       text: d['choice'+n+'_text'], pro: d['choice'+n+'_pro'],
@@ -321,13 +325,16 @@ function openDilemma(dilemmaId){
 function pickChoice(dilemmaId, i){
   const d = DILEMMAS.find(row => row.id === dilemmaId);
   const c = { text: d['choice'+(i+1)+'_text'], pro: d['choice'+(i+1)+'_pro'], con: d['choice'+(i+1)+'_con'], tip: d['choice'+(i+1)+'_tip'] };
+  const moodColour = (d.moods||'').split('|')[0];
+  const moodHex = (ZONES.find(z => z.colour === moodColour) || {}).hex || '#7fb3a3';
   click();
   document.querySelectorAll('#panel-choices .choice-btn').forEach((b,idx)=>{
     b.disabled = true; if(idx===i) b.classList.add('picked');
   });
+  logEntry({ type:'dilemma', dilemmaId, scene: d.scene, category: d.category, title: d.title, choiceIndex: i, choiceText: c.text });
   document.getElementById('result-box').innerHTML = `
-    <div class="result-row result-pro"><span class="rk">Pro</span>${c.pro}</div>
-    <div class="result-row result-con"><span class="rk">Notice</span>${c.con}</div>
+    <div class="result-row" style="background:${moodHex}26;border:1px solid ${moodHex}66"><span class="rk" style="color:${moodHex}">Good in this</span>${c.pro}</div>
+    <div class="result-row" style="background:${moodHex}14;border:1px solid ${moodHex}40"><span class="rk" style="color:${moodHex}">Worth noticing</span>${c.con}</div>
     <div class="result-row result-tip"><span class="rk">If this happens for real</span>${c.tip}</div>
     <button class="panel-continue" onclick="closePanel('${dilemmaId}')">Continue</button>
   `;
