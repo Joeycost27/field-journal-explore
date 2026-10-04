@@ -108,3 +108,4 @@ then open `http://localhost:8000` in a browser. Stop it with Ctrl+C when done.
 ---
 *Engine v1 — Garden and Bedroom proven working. Ready for Hallway, Kitchen, Back
 Path, and the Street/School levels as art and content are added.*
+
