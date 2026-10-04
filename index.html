@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -39,8 +40,9 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .touch-marker.exit{background:rgba(127,179,163,0.3);border-color:var(--sage);border-style:dashed}
 @keyframes pulse{0%{transform:scale(0.8);opacity:.9}100%{transform:scale(1.6);opacity:0}}
 
-.char-dot{position:absolute;width:14px;height:14px;margin-left:-7px;margin-top:-14px;border-radius:50% 50% 50% 0;background:var(--rose);border:2px solid #fff;transition:left .7s cubic-bezier(.4,0,.2,1),top .7s cubic-bezier(.4,0,.2,1);box-shadow:0 2px 8px rgba(0,0,0,.5);z-index:5;animation:sway 2.4s ease-in-out infinite}
-@keyframes sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+.char-wrap{position:absolute;transform:translate(-50%,-100%);transition:left .7s cubic-bezier(.4,0,.2,1),top .7s cubic-bezier(.4,0,.2,1);z-index:5}
+.char-img{width:46px;height:auto;display:block;filter:drop-shadow(0 3px 8px rgba(0,0,0,.55));--flip:1;animation:sway 2.4s ease-in-out infinite;transform-origin:center bottom}
+@keyframes sway{0%,100%{transform:scaleX(var(--flip)) rotate(-3deg)}50%{transform:scaleX(var(--flip)) rotate(3deg)}}
 
 .legend{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 .legend button{text-align:left;padding:12px 14px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);font-size:.86rem;transition:border-color .15s,background .15s}
@@ -106,11 +108,17 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 
   <div class="stage" id="stage" style="display:none">
     <img id="scene-img" alt="">
-    <div class="char-dot" id="char" style="display:none"></div>
+    <div class="char-wrap" id="char" style="display:none">
+      <img class="char-img" id="char-img" src="" alt="">
+    </div>
   </div>
   <div id="placeholder-area"></div>
 
   <div class="legend" id="legend"></div>
+
+  <div style="text-align:center;margin-top:28px">
+    <button onclick="downloadLog()" style="font-size:.72rem;color:var(--muted);text-decoration:underline">Download activity log</button>
+  </div>
 </div>
 
 <div class="panel-backdrop" id="backdrop">
@@ -140,6 +148,19 @@ let LOCATIONS = [], DILEMMAS = [], EXITS = [], ZONES = [];
 let currentSceneId = null;
 let visited = new Set();
 let charPos = { x:45, y:88 };
+
+/* ---------- Persistence ---------- */
+function ld(k,d){ try{ const v = localStorage.getItem('ffx_'+k); return v===null?d:JSON.parse(v); }catch(e){ return d; } }
+function sv(k,v){ try{ localStorage.setItem('ffx_'+k, JSON.stringify(v)); }catch(e){} }
+let LOG = ld('log', []);
+function logEntry(entry){ LOG.push({ ts: Date.now(), ...entry }); sv('log', LOG); }
+function downloadLog(){
+  const blob = new Blob([JSON.stringify(LOG,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'explore_activity_log.json';
+  a.click();
+}
 
 /* ---------- TSV parsing ---------- */
 function parseTSV(text){
@@ -251,6 +272,7 @@ function goToScene(sceneId){
   char.style.display = 'block';
   char.style.left = charPos.x+'%';
   char.style.top = charPos.y+'%';
+  document.getElementById('char-img').src = 'characters/' + AVATAR + '.png';
 
   renderLegend(sceneDilemmas, sceneExits);
 }
@@ -270,7 +292,11 @@ function renderLegend(sceneDilemmas, sceneExits){
 /* ---------- Character movement ---------- */
 function walkTo(targetX, targetY, onArrive){
   const char = document.getElementById('char');
-  charPos = { x: parseFloat(targetX), y: parseFloat(targetY) };
+  const charImg = document.getElementById('char-img');
+  const tx = parseFloat(targetX);
+  if(tx < charPos.x) charImg.style.setProperty('--flip','-1');
+  else if(tx > charPos.x) charImg.style.setProperty('--flip','1');
+  charPos = { x: tx, y: parseFloat(targetY) };
   char.style.left = charPos.x+'%';
   char.style.top = charPos.y+'%';
   click();
@@ -377,7 +403,16 @@ function pickZone(colour, strategyIndex){
   const strategy = z['strategy'+i] || z.strategy1;
   const panel = document.getElementById('panel');
   click();
+  if(!strategyIndex) logEntry({ type:'zone', colour, label: z.label });
   panel.style.background = `linear-gradient(180deg, ${z.hex}, var(--surface) 140%)`;
+
+  const matches = DILEMMAS.filter(d => (d.moods||'').split('|').includes(colour));
+  const unvisitedMatches = matches.filter(d => !visited.has(d.id));
+  const suggestPool = unvisitedMatches.length ? unvisitedMatches : matches;
+  const suggestBtn = suggestPool.length
+    ? `<button class="again" style="margin-top:8px;width:100%" onclick="suggestDilemmaForMood('${colour}')">Something to think through</button>`
+    : '';
+
   panel.innerHTML = `
     <div class="panel-title serif">${z.label}</div>
     <div class="zone-result">
@@ -387,8 +422,19 @@ function pickZone(colour, strategyIndex){
         <button class="again" onclick="pickZone('${colour}', ${(i%3)+1})">Show another idea</button>
         <button class="done" onclick="closeZonePicker()">Done</button>
       </div>
+      ${suggestBtn}
     </div>
   `;
+}
+
+function suggestDilemmaForMood(colour){
+  const matches = DILEMMAS.filter(d => (d.moods||'').split('|').includes(colour));
+  if(matches.length === 0) return;
+  const unvisited = matches.filter(d => !visited.has(d.id));
+  const pool = unvisited.length ? unvisited : matches;
+  const pick = pool[Math.floor(Math.random()*pool.length)];
+  logEntry({ type:'zone_suggestion', colour, suggestedDilemmaId: pick.id });
+  openDilemma(pick.id);
 }
 
 function closeZonePicker(){
@@ -399,7 +445,42 @@ function closeZonePicker(){
   setTimeout(()=>{ backdrop.classList.remove('show'); panel.style.background=''; }, 350);
 }
 
-loadData();
+/* ---------- Avatar picker — asked once, remembered after ---------- */
+let AVATAR = ld('avatar', null);
+
+function ensureAvatar(onDone){
+  if(AVATAR){ onDone(); return; }
+  const panel = document.getElementById('panel');
+  const backdrop = document.getElementById('backdrop');
+  panel.style.background = '';
+  panel.style.borderTop = '';
+  panel.innerHTML = `
+    <div class="panel-title serif">Who\u2019s playing?</div>
+    <div class="panel-intro">Pick which one is you.</div>
+    <div class="panel-choices">
+      <button class="choice-btn" onclick="chooseAvatar('girl')">Girl</button>
+      <button class="choice-btn" onclick="chooseAvatar('boy')">Boy</button>
+    </div>
+  `;
+  backdrop.classList.add('show');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>panel.classList.add('open')));
+  window._onAvatarChosen = onDone;
+}
+
+function chooseAvatar(which){
+  AVATAR = which;
+  sv('avatar', which);
+  closeTone();
+  const panel = document.getElementById('panel');
+  const backdrop = document.getElementById('backdrop');
+  panel.classList.remove('open');
+  setTimeout(()=>{
+    backdrop.classList.remove('show');
+    if(window._onAvatarChosen) window._onAvatarChosen();
+  }, 350);
+}
+
+ensureAvatar(loadData);
 </script>
 </body>
 </html>
