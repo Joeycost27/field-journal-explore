@@ -29,7 +29,7 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .scene-nav button.active{border-color:var(--amber);color:var(--text)}
 
 .stage{position:relative;width:100%;border-radius:8px;overflow:hidden;border:1px solid var(--border2);background:#000;line-height:0}
-.stage img{width:100%;display:block}
+#scene-img{width:100%;display:block}
 
 .touch-marker{position:absolute;width:22px;height:22px;margin-left:-11px;margin-top:-11px;border-radius:50%;background:rgba(232,163,61,0.35);border:2px solid var(--amber);cursor:pointer;transition:transform .15s,background .15s}
 .touch-marker::after{content:'';position:absolute;inset:-8px;border-radius:50%;border:1px solid rgba(232,163,61,0.4);animation:pulse 2s infinite}
@@ -39,9 +39,9 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .touch-marker.exit{background:rgba(127,179,163,0.3);border-color:var(--sage);border-style:dashed}
 @keyframes pulse{0%{transform:scale(0.8);opacity:.9}100%{transform:scale(1.6);opacity:0}}
 
-.char-wrap{position:absolute;transition:left .7s cubic-bezier(.4,0,.2,1),top .7s cubic-bezier(.4,0,.2,1),transform .7s cubic-bezier(.4,0,.2,1);z-index:5}
-.char-img{width:46px;height:auto;display:block;filter:drop-shadow(0 3px 8px rgba(0,0,0,.55));--flip:1;animation:bob 2.2s ease-in-out infinite;transform-origin:center bottom}
-@keyframes bob{0%,100%{transform:scaleX(var(--flip)) translateY(0)}50%{transform:scaleX(var(--flip)) translateY(-3px)}}
+.char-wrap{position:absolute;transform:translate(-50%,-100%);transition:left .7s cubic-bezier(.4,0,.2,1),top .7s cubic-bezier(.4,0,.2,1),width .7s cubic-bezier(.4,0,.2,1);z-index:5}
+.char-img{width:100%;height:auto;display:block;filter:drop-shadow(0 3px 8px rgba(0,0,0,.55));--flip:1;animation:bob 2.2s ease-in-out infinite;transform-origin:center bottom}
+@keyframes bob{0%,100%{transform:scaleX(var(--flip)) translateY(0)}50%{transform:scaleX(var(--flip)) translateY(-3%)}}
 
 .legend{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 .legend button{text-align:left;padding:12px 14px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);font-size:.86rem;transition:border-color .15s,background .15s}
@@ -271,20 +271,27 @@ function goToScene(sceneId){
   char.style.display = 'block';
   char.style.left = charPos.x+'%';
   char.style.top = charPos.y+'%';
-  char.style.transform = `translate(-50%,-100%) scale(${charScaleForY(charPos.y)})`;
+  char.style.width = charWidthPctForY(charPos.y) + '%';
   document.getElementById('char-img').src = 'characters/' + AVATAR + '.png';
 
   renderLegend(sceneDilemmas, sceneExits);
 }
 
-/* ---------- Depth scale — further up the frame (smaller y%) reads as further
-   back in the scene, so the character scales down; closer to the bottom (larger
-   y%) reads as nearer the viewer, so it scales up. Pure position-based, no
-   per-scene calibration needed. ---------- */
-function charScaleForY(y){
-  const minY = 15, maxY = 92, minScale = 0.55, maxScale = 1.2;
+/* ---------- Character size — proportional to the background ----------
+   Size is expressed as a % of the SCENE'S HEIGHT, so it scales with the
+   background on any screen. Higher up the frame = further back = smaller;
+   lower = nearer the viewer = larger.
+   >>> To resize the character everywhere, change these two numbers: <<< */
+const CHAR_HEIGHT_FAR_PCT  = 8;    // character height at the top of the frame
+const CHAR_HEIGHT_NEAR_PCT = 26;   // character height at the bottom of the frame
+const CHAR_ASPECT  = 0.335;        // sprite width / height
+const STAGE_ASPECT = 944 / 1680;   // scene height / scene width
+
+function charWidthPctForY(y){
+  const minY = 15, maxY = 92;
   const t = Math.max(0, Math.min(1, (y - minY) / (maxY - minY)));
-  return (minScale + t * (maxScale - minScale)).toFixed(3);
+  const heightPct = CHAR_HEIGHT_FAR_PCT + t * (CHAR_HEIGHT_NEAR_PCT - CHAR_HEIGHT_FAR_PCT);
+  return (heightPct * CHAR_ASPECT * STAGE_ASPECT).toFixed(2);   // % of stage WIDTH
 }
 
 function renderLegend(sceneDilemmas, sceneExits){
@@ -309,7 +316,7 @@ function walkTo(targetX, targetY, onArrive){
   charPos = { x: tx, y: ty };
   char.style.left = charPos.x+'%';
   char.style.top = charPos.y+'%';
-  char.style.transform = `translate(-50%,-100%) scale(${charScaleForY(ty)})`;
+  char.style.width = charWidthPctForY(ty) + '%';
   click();
   setTimeout(onArrive, 720);
 }
